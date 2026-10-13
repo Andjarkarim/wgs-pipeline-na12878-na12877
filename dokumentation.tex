@@ -1,0 +1,481 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[ngerman]{babel}
+\usepackage[margin=2cm,columnsep=0.8cm]{geometry}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage[round,authoryear]{natbib}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage[hidelinks]{hyperref}
+\def\UrlBreaks{\do\/\do-\do.\do_\do=\do?\do\&}
+\setlength{\emergencystretch}{3em}
+\setlength{\bibsep}{2pt}
+\renewcommand{\bibfont}{\small}
+\DeclareUnicodeCharacter{2248}{\ensuremath{\approx}}
+\DeclareUnicodeCharacter{2212}{\ensuremath{-}}
+\DeclareUnicodeCharacter{2192}{\ensuremath{\rightarrow}}
+\definecolor{cgrau}{gray}{0.45}
+\definecolor{rgrau}{gray}{0.8}
+\definecolor{bgrau}{gray}{0.96}
+\lstdefinestyle{code}{basicstyle=\ttfamily\scriptsize, breaklines=true, columns=fullflexible,
+  keepspaces=true, frame=single, rulecolor=\color{rgrau}, backgroundcolor=\color{bgrau},
+  xleftmargin=2pt, xrightmargin=2pt, aboveskip=4pt, belowskip=4pt, showstringspaces=false,
+  postbreak=\mbox{\textcolor{cgrau}{$\hookrightarrow$}\space}, language=Python,
+  commentstyle=\color{cgrau}\itshape}
+\lstset{style=code}
+\lstset{literate={ä}{{\"a}}1 {ö}{{\"o}}1 {ü}{{\"u}}1 {Ä}{{\"A}}1 {Ö}{{\"O}}1 {Ü}{{\"U}}1 {ß}{{\ss}}1 {Ø}{{\O}}1 {→}{{$\rightarrow$}}1 {≈}{{$\approx$}}1 {·}{{\textperiodcentered}}1 {–}{{--}}1 {×}{{$\times$}}1 {−}{{$-$}}1 {≤}{{$\leq$}}1 {≥}{{$\geq$}}1}
+\newcommand{\gene}[1]{\textit{#1}}
+ 
+\title{Dokumentation einer WGS-Variantenpipeline mit Snakemake:\\
+von FASTQ-Rohdaten zu annotierten ClinVar-Kandidaten und einem Elternvergleich (NA12878, NA12877)}
+\author{Karim Andjar\\[2pt]
+\small Justus-Liebig-Universität Gießen, Master Bioinformatik und Systembiologie}
+\date{\today}
+ 
+\begin{document}
+ 
+\makeatletter
+\twocolumn[
+\begin{@twocolumnfalse}
+\maketitle
+\renewcommand{\abstractname}{Zusammenfassung}
+\begin{abstract}
+Diese Dokumentation beschreibt eine vollständige Pipeline zur Auswertung menschlicher Ganzgenomsequenzierungen (WGS) auf einem Laptop. Ausgehend von den Rohdaten zweier Proben des Platinum-Genomes-Pedigrees, NA12878 (Mutter, Lauf ERR194147) und NA12877 (Vater, Lauf ERR194146), jeweils etwa 50-fache Tiefe, werden Qualitätskontrolle, Trimmen, Mapping, Duplikatmarkierung, Variantenbestimmung, Annotation mit VEP und ClinVar, die Filterung pathogener Kandidaten und eine Qualitätsprüfung anhand der Allelbalance als Snakemake-Workflow und ergänzende Python-Skripte umgesetzt. Ein Vergleichsskript stellt die Kandidaten beider Eltern gegenüber. Für jeden Schritt werden die biologische Idee, das verwendete Werkzeug, die Snakemake-Regel, die Ein- und Ausgabedateien und die tatsächlich erzielten Zahlen erklärt. Ergänzt wird dies durch eine Schritt-für-Schritt-Anleitung zur Reproduktion, eine Liste der aufgetretenen Probleme mit ihren Lösungen und eine offene Darstellung der Grenzen, insbesondere der noch fehlenden Validierung gegen ein Truth Set.
+\end{abstract}
+\noindent\textbf{Schlüsselwörter:} Snakemake, WGS, BWA-MEM, GATK, VEP, ClinVar, Reproduzierbarkeit
+\bigskip
+\end{@twocolumnfalse}
+]
+\makeatother
+ 
+\section{Überblick}
+Die Pipeline beantwortet eine Frage: Welche Varianten eines Genoms sind in ClinVar als pathogen eingetragen, wie belastbar sind diese Treffer technisch, und welche Gene tragen beide Eltern eines Paares? Die Pipeline läuft für jede Probe getrennt mit identischen Schritten; erst der Elternvergleich führt beide Ergebnisse zusammen. Der Datenfluss ist in Abbildung~\ref{fig:fluss} dargestellt. Die blauen Schritte erzeugen aus den Reads eine Variantenliste, die orangen Schritte annotieren, filtern und prüfen sie.
+ 
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[node distance=5mm,
+  box/.style={draw, rounded corners=2pt, align=center, font=\scriptsize, minimum height=10mm, minimum width=26mm, fill=blue!7},
+  pfeil/.style={-{Stealth[length=2mm]}, thick}]
+\node[box] (a) {Rohdaten\\(FASTQ, FastQC)};
+\node[box, right=of a] (b) {fastp\\Trimmen};
+\node[box, right=of b] (c) {BWA-MEM\\+ samtools sort};
+\node[box, right=of c] (d) {MarkDuplicates};
+\node[box, right=of d] (e) {HaplotypeCaller\\(VCF)};
+\node[box, below=of e, fill=orange!15] (f) {VEP +\\ClinVar};
+\node[box, left=of f, fill=orange!15] (g) {filter\_vep\\(181 / 188)};
+\node[box, left=of g, fill=orange!15] (h) {Kandidaten-\\tabelle};
+\node[box, left=of h, fill=orange!15] (i) {Strenger Filter\\(je 11)};
+\node[box, left=of i, fill=orange!15] (j) {Qualitätsfilter\\(7 / 6)};
+\draw[pfeil] (a)--(b); \draw[pfeil] (b)--(c); \draw[pfeil] (c)--(d); \draw[pfeil] (d)--(e);
+\draw[pfeil] (e)--(f); \draw[pfeil] (f)--(g); \draw[pfeil] (g)--(h); \draw[pfeil] (h)--(i);
+\draw[pfeil] (i)--(j);
+\end{tikzpicture}
+\caption{Ablauf der Pipeline. Blau: von den Reads zur Variantenliste. Orange: Annotation, Filterung und Prüfung. Zahlen: Mutter / Vater. Danach folgen Abbildungen und der Elternvergleich.}
+\label{fig:fluss}
+\end{figure*}
+ 
+\begin{table}[t]
+\centering\small
+\caption{Verwendete Werkzeuge und Versionen.}
+\label{tab:tools}
+\begin{tabular}{@{}p{2.4cm}p{1.6cm}p{3.2cm}@{}}
+\toprule
+Werkzeug & Version & Aufgabe\\
+\midrule
+FastQC & 0.12.1 & Qualitätsbericht\\
+fastp & 1.3.7 & Trimmen, Filtern\\
+BWA (MEM) & 0.7.19 & Mapping\\
+samtools & 1.24 & Sortieren, Index, Statistik\\
+GATK & 4.6.2.0 & Duplikate, Variantenbestimmung\\
+Snakemake & 6.1.2 & Workflow\\
+Ensembl VEP & 116.2 & Annotation\\
+ClinVar & 2026-10-04 & Pathogenitätsangaben\\
+Python & 3.10 & Auswertung, Abbildungen\\
+pycirclize & 1.10.1 & Circos-Plot\\
+\bottomrule
+\end{tabular}
+\end{table}
+ 
+\section{Umgebung und Installation}
+\subsection{Rechner und Speicherbedarf}
+Alles lief auf einem MacBook Air (Apple Silicon, 25~GB Arbeitsspeicher). Der Speicherbedarf ist der eigentliche Engpass (Tab.~\ref{tab:platz}): Im Spitzenwert liegen alle Zwischendateien einer Probe gleichzeitig auf der Platte, zusammen etwa 430~GB. Die Proben wurden nacheinander verarbeitet.
+ 
+\begin{table}[t]
+\centering\small
+\caption{Größe der wichtigsten Dateien (Mutter; beim Vater gleiche Größenordnung).}
+\label{tab:platz}
+\begin{tabular}{@{}p{4.6cm}p{2.6cm}@{}}
+\toprule
+Datei & Größe\\
+\midrule
+Rohdaten (2 FASTQ-Dateien) & 48 + 49~GB\\
+Getrimmte FASTQ-Dateien & je 48~GB\\
+\texttt{sorted.bam} & 96~GB\\
+\texttt{dedup.bam} & 113~GB\\
+Referenz mit BWA-Index & etwa 5,8~GB\\
+VEP-Cache (Archiv) & 25,7~GB\\
+ClinVar & 191~MB\\
+\bottomrule
+\end{tabular}
+\end{table}
+ 
+\subsection{Haupt-Umgebung}
+Die Werkzeuge liegen in einer conda-Umgebung \texttt{na12878\_pipeline}. Sie wurde so angelegt:
+\begin{lstlisting}[language=bash]
+conda create -n na12878_pipeline \
+  -c bioconda -c conda-forge python=3.10
+conda activate na12878_pipeline
+conda install bwa samtools bcftools gatk4 \
+  fastqc multiqc fastp snakemake
+conda install pigz stopit matplotlib
+pip install pycirclize
+\end{lstlisting}
+Die Zusammensetzung lässt sich mit \texttt{conda env export --from-history} festhalten. \texttt{pycirclize} (und dessen Abhängigkeit Biopython) kommt über pip und ist daher nicht in dieser Liste enthalten.
+ 
+\subsection{VEP-Umgebung}
+VEP läuft in einer eigenen Umgebung \texttt{vep}, weil es als Paket für Intel-Prozessoren (\texttt{osx-64}) installiert wurde. Auf Apple Silicon läuft es dann über die Übersetzungsschicht Rosetta~2.
+\begin{lstlisting}[language=bash]
+softwareupdate --install-rosetta \
+  --agree-to-license
+CONDA_SUBDIR=osx-64 conda create -n vep \
+  -c conda-forge -c bioconda ensembl-vep
+\end{lstlisting}
+Der Workflow ruft VEP aus der Haupt-Umgebung mit \texttt{conda run -n vep --no-capture-output} auf, sodass keine Umgebung gewechselt werden muss.
+ 
+\subsection{VEP-Cache}
+VEP braucht lokal die Ensembl-Transkriptdaten, den sogenannten Cache. Der Installer \texttt{vep\_install} brach bei der Übertragung mit einem FTP-Timeout ab. Stattdessen wurde das Archiv per HTTPS geladen (25,7~GB; \texttt{-C -} setzt einen abgebrochenen Download fort) und entpackt:
+\begin{lstlisting}[language=bash]
+mkdir -p ~/.vep && cd ~/.vep
+caffeinate -i curl -C - -O https://ftp.ensembl.org/pub/release-116/variation/indexed_vep_cache/homo_sapiens_vep_116_GRCh38.tar.gz
+tar xzf homo_sapiens_vep_116_GRCh38.tar.gz
+rm homo_sapiens_vep_116_GRCh38.tar.gz
+\end{lstlisting}
+\texttt{caffeinate -i} verhindert, dass der Mac während des Downloads in den Ruhezustand geht.
+ 
+\section{Projektstruktur}
+Alle Befehle werden im Projektordner \texttt{\textasciitilde/na12878\_projekt} ausgeführt. Die Ordner entsprechen den Phasen der Pipeline:
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily\tiny]
+na12878_projekt/
+  Snakefile            Workflow
+  *.py                 Auswertung, Filter, Abbildungen,
+                       Elternvergleich
+  rohdaten/            FASTQ (Eingabe)
+  referenz/            Genom, Index, ClinVar
+  qc/                  FastQC, MultiQC, flagstat
+  trimmed/             getrimmte FASTQ
+  alignment/           BAM-Dateien
+  logs/                fastp- und Duplikat-Berichte
+  varianten/           VCF- und TSV-Dateien
+  abbildungen/<Probe>/ PNG und JSON je Probe
+  abbildungen/11_...   Allelbalance beider Eltern
+  .snakemake/          interne Snakemake-Daten
+\end{lstlisting}
+ 
+\section{Daten und Referenz}
+\subsection{Sequenzdaten}
+Verwendet werden zwei Läufe des Platinum-Genomes-Pedigrees \citep{eberle2017}: ERR194147 (NA12878, im Pedigree die Mutter) mit 1.574.530.218 Reads und ERR194146 (NA12877, der Vater) mit 1.626.361.156 Reads, jeweils paired-end mit 101~bp. Die FASTQ-Dateien (\texttt{\_1} und \texttt{\_2}) liegen in \texttt{rohdaten/}. Die relative Tiefe der Geschlechtschromosomen bestätigt das Geschlecht: Mutter X~0,97 und Y~0,093, Vater X~0,50 und Y~0,411. Die Daten stammen aus dem European Nucleotide Archive (Illumina HiSeq 2000; ERR194147 gehört zum Projekt PRJEB3381, die Probe heißt dort \texttt{NA12878\_30x}; die hier gemessene Tiefe beträgt etwa 50$\times$). Die Projektzuordnung von ERR194146 habe ich nicht gesondert geprüft. Die Dateien liegen unter \url{ftp.sra.ebi.ac.uk/vol1/fastq/ERR194/}.
+ 
+\subsection{Referenzgenom}
+Als Referenz dient die Ensembl-Version GRCh38 der \glqq primary assembly\grqq{} (Release~111). Sie enthält die Chromosomen und nicht platzierte Contigs, aber keine alternativen Haplotypen, die beim Mapping zu mehrdeutigen Positionen führen würden.
+\begin{lstlisting}[language=bash]
+curl -O https://ftp.ensembl.org/pub/release-111/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+bwa index Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+samtools faidx Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+\end{lstlisting}
+Dabei entstehen mehrere Hilfsdateien: der BWA-Index (\texttt{.bwt}, \texttt{.pac}, \texttt{.sa}, \texttt{.ann}, \texttt{.amb}), der samtools-Index (\texttt{.fai}, \texttt{.gzi}) und das Sequenzwörterbuch (\texttt{.dict}), das GATK verlangt. Es wurde mit \texttt{gatk CreateSequenceDictionary -R Referenz.fa.gz} erzeugt.
+Der BWA-Index basiert auf der Burrows-Wheeler-Transformation: Die Referenz wird so komprimiert und durchsuchbar gemacht, dass Reads in kurzer Zeit auf exakte Teilstücke abgeglichen werden können.
+ 
+\subsection{ClinVar}
+ClinVar \citep{landrum2018} wird als VCF mit Tabix-Index geladen. Die verwendete Datei trägt das Datum 2026-10-04.
+\begin{lstlisting}[language=bash]
+cd referenz
+curl -O https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz
+curl -O https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz.tbi
+\end{lstlisting}
+ClinVar wird laufend aktualisiert. Wer den Lauf später wiederholt, erhält leicht abweichende Zahlen. Für exakte Reproduzierbarkeit sollte die verwendete Datei aufbewahrt werden.
+ 
+\section{Die Pipeline Schritt für Schritt}
+\subsection{Wie Snakemake arbeitet}
+Snakemake \citep{molder2021} beschreibt die Pipeline als Regeln mit Eingabe-, Ausgabedateien und einem Shell-Befehl. Aus den Dateinamen leitet es selbst die Reihenfolge ab: Eine Regel läuft, wenn ihre Ausgabe fehlt oder älter als ihre Eingabe ist. Dadurch wird nach einem Abbruch nur das Fehlende nachgeholt. Die Regel \texttt{all} legt das Ziel fest. Am Dateikopf stehen die Konstanten; Probenkennung und Name kommen aus der Konfiguration, Standard ist die Mutter:
+\begin{lstlisting}
+SAMPLE = config.get("sample", "ERR194147")
+NAME = config.get("name", "NA12878")
+REF = "referenz/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"
+THREADS = 4
+\end{lstlisting}
+ 
+\subsection{Qualitätskontrolle (FastQC)}
+FastQC zeigt pro Position die Basenqualität, den GC-Gehalt, Adapter- und Duplikatanteile der Rohdaten. So sieht man, ob die Sequenzierung brauchbar ist und ob getrimmt werden muss.
+\begin{lstlisting}
+rule fastqc:
+    input: r1 = f"rohdaten/{SAMPLE}_1.fastq.gz",
+           r2 = f"rohdaten/{SAMPLE}_2.fastq.gz"
+    output: html1 = f"qc/{SAMPLE}_1_fastqc.html",
+            html2 = f"qc/{SAMPLE}_2_fastqc.html"
+    threads: THREADS
+    shell: "fastqc {input.r1} {input.r2} -o qc/ -t {threads}"
+\end{lstlisting}
+ 
+\subsection{Trimmen (fastp)}
+Am Ende eines Fragments liest der Sequenzierer manchmal in den Adapter hinein, und Basen am Readende sind unsicherer. fastp \citep{chen2018} erkennt die Adapter bei Paired-End-Daten automatisch, kürzt sie und verwirft Reads schlechter Qualität. Es lief mit den Standardwerten (unter anderem Phred-Mindestqualität~15, höchstens 40~\% schlechte Basen pro Read, höchstens 5~N, Mindestlänge 15~bp).
+\begin{lstlisting}
+rule trimming:
+    input: r1 = ..., r2 = ...
+    output: r1 = f"trimmed/{SAMPLE}_1.trim.fastq.gz",
+            r2 = f"trimmed/{SAMPLE}_2.trim.fastq.gz",
+            json = f"logs/{SAMPLE}.fastp.json",
+            html = f"logs/{SAMPLE}.fastp.html"
+    shell: fastp -i {input.r1} -I {input.r2}
+        -o {output.r1} -O {output.r2}
+        -j {output.json} -h {output.html}
+        -w {threads}
+\end{lstlisting}
+\textbf{Ergebnis (Mutter):} Von 1.574.530.218 Reads blieben 1.531.902.900 (97,3~\%) übrig. Verworfen wurden 40.643.538 wegen niedriger Qualität und 1.983.780 wegen zu vieler N; bei 13.688.342 Reads wurden Adapter gekürzt. Der Q30-Anteil stieg von 92,08 auf 93,33~\%. \textbf{Vater:} Von 1.626.361.156 Reads blieben 1.584.374.426 (97,4~\%); 37.754.576 Reads wurden wegen niedriger Qualität und 4.232.154 wegen zu vieler N verworfen, bei 10.192.218 wurden Adapter gekürzt, der Q30-Anteil stieg von 90,65 auf 91,83~\%.
+ 
+\subsection{Mapping (BWA-MEM)}
+Beim Mapping wird für jeden Read die Stelle im Genom gesucht, von der er stammt. BWA-MEM \citep{li2013} findet zuerst längste exakte Übereinstimmungen (\glqq maximal exact matches\grqq) über den Burrows-Wheeler-Index und verlängert sie dann mit einem lokalen Alignment; bei Paaren nutzt es den Abstand und die Orientierung beider Reads. Die Ausgabe geht direkt in \texttt{samtools sort}, sodass keine riesige unsortierte SAM-Datei entsteht.
+\begin{lstlisting}
+rule alignment:
+    input: r1 = ..., r2 = ..., ref = REF
+    output: bam = f"alignment/{SAMPLE}.sorted.bam"
+    shell:
+        bwa mem -t {threads}
+          -R '@RG\tID:{SAMPLE}\tSM:{NAME}\tPL:ILLUMINA'
+          {input.ref} {input.r1} {input.r2}
+          | samtools sort -@ {threads} -o {output.bam} -
+        samtools index {output.bam}
+\end{lstlisting}
+Die Option \texttt{-R} schreibt eine Read-Group (Probenname aus der Konfiguration, Plattform Illumina) in jede Zeile. GATK verlangt sie, damit klar ist, zu welcher Probe Reads gehören. \textbf{Ergebnis:} Mutter 99,74~\% abgebildet, 97,93~\% korrekt gepaart (Ausgabe etwa 96~GB); Vater 99,60~\% und 97,66~\%.
+ 
+\subsection{Duplikate markieren (GATK MarkDuplicates)}
+Aus einem DNA-Fragment können durch die PCR-Amplifikation mehrere identische Reads entstehen. Würde man sie mitzählen, sähe ein Fehler in einem Fragment wie viele unabhängige Belege aus. MarkDuplicates erkennt Reads mit gleichen Start- und Endpositionen und setzt ein Flag; die Reads bleiben in der Datei, der HaplotypeCaller überspringt sie aber.
+\begin{lstlisting}
+rule mark_duplicates:
+    input: bam = f"alignment/{SAMPLE}.sorted.bam"
+    output: bam = f"alignment/{SAMPLE}.dedup.bam",
+            metrics = f"logs/{SAMPLE}.dedup_metrics.txt"
+    shell: gatk MarkDuplicates -I {input.bam}
+        -O {output.bam} -M {output.metrics}
+        samtools index {output.bam}
+\end{lstlisting}
+\textbf{Ergebnis:} Duplikationsrate Mutter 1,18~\% (17.962.267 Reads; Ausgabe etwa 113~GB), Vater 1,19~\% (18.730.877 Reads).
+ 
+\subsection{Variantenbestimmung (GATK HaplotypeCaller)}
+Der HaplotypeCaller \citep{mckenna2010} sucht Regionen mit Abweichungen von der Referenz, setzt dort aus den Reads lokal neue Haplotypen zusammen und berechnet für jeden die Wahrscheinlichkeit. Daraus ergibt sich der Genotyp (0/0, 0/1 oder 1/1) mit Qualitätswerten. Die Regel ruft ihn ohne zusätzliche Optionen auf (Standard-Ploidie~2, keine Zielregionen).
+\begin{lstlisting}
+rule variant_calling:
+    input: bam = f"alignment/{SAMPLE}.dedup.bam", ref = REF
+    output: vcf = f"varianten/{SAMPLE}.vcf.gz"
+    shell: gatk HaplotypeCaller -R {input.ref}
+        -I {input.bam} -O {output.vcf}
+\end{lstlisting}
+Abweichend von den GATK Best Practices \citep{vanderauwera2013} gab es weder eine Rekalibrierung der Basenqualitäten (BQSR) noch eine Variantenfilterung (VQSR oder Hard-Filter). \textbf{Ergebnis:} 4.893.226 (Mutter) bzw.\ 4.889.622 (Vater) Varianten im ungefilterten VCF; Ti/Tv jeweils 1,98 (nur Chromosomen).
+ 
+\subsection{Annotation (VEP und ClinVar)}
+Eine Variante bekommt erst Bedeutung, wenn man weiß, was sie im Gen bewirkt. VEP \citep{mclaren2016} ordnet jede Variante den Transkripten zu und benennt die Konsequenz mit Begriffen der Sequence Ontology (zum Beispiel \texttt{missense\_variant}, \texttt{frameshift\_variant}). Pro Variante entstehen mehrere Einträge, einer je Transkript; sie stehen im INFO-Feld \texttt{CSQ}. Mit \texttt{--custom} wird ClinVar als zusätzliche Spur angehängt.
+\begin{lstlisting}
+rule vep_annotate:
+    input: vcf = f"varianten/{SAMPLE}.vcf.gz",
+           clinvar = "referenz/clinvar.vcf.gz"
+    output: vcf = f"varianten/{SAMPLE}.vep.vcf.gz"
+    shell: conda run -n vep --no-capture-output vep
+        -i {input.vcf}
+        --cache --offline --assembly GRCh38
+        --dir_cache ~/.vep
+        --custom file={input.clinvar},
+          short_name=ClinVar,format=vcf,
+          type=exact,coords=0,fields=CLNSIG
+        --vcf --compress_output bgzip
+        --fork {threads} -o {output.vcf}
+\end{lstlisting}
+\texttt{type=exact} verlangt, dass Position und Allel mit dem ClinVar-Eintrag übereinstimmen. Das Ergebnis steht als Feld \texttt{ClinVar\_CLNSIG} in der \texttt{CSQ}-Zeile. Die ClinVar-Zuordnung geschieht also über Position und Allel, nicht über das Gen. \textbf{Ergebnis:} Mutter 4.864.560 annotierte Varianten, davon 44.476 mit ClinVar-Treffer; Vater 4.864.034 und 43.890. Etwa 0,6~\% der gerufenen Varianten fehlen in beiden Ausgaben; die Ursache ist nicht vollständig geklärt (Contigs außerhalb des Caches sind eine plausible Teilerklärung). Die Referenz stammt aus Ensembl-Release~111, der Cache aus Release~116; die Genomsequenz ist in beiden gleich (GRCh38), nur die Genmodelle können sich unterscheiden.
+ 
+\subsection{Filtern auf pathogene Einträge}
+\texttt{filter\_vep} behält Varianten, deren ClinVar-Wert zum Muster passt. Das Muster \glqq athogenic\grqq{} ohne Anfangsbuchstaben trifft \texttt{Pathogenic} und \texttt{Likely\_pathogenic}, aber auch \texttt{Conflicting\_classifications\_of\_pathogenicity}.
+\begin{lstlisting}
+rule filter_pathogenic:
+    input: vcf = f"varianten/{SAMPLE}.vep.vcf.gz"
+    output: vcf = f"varianten/{SAMPLE}.pathogene.vcf"
+    shell: conda run -n vep --no-capture-output
+        filter_vep -i {input.vcf}
+        --filter "ClinVar_CLNSIG match athogenic"
+        -o {output.vcf}
+\end{lstlisting}
+\textbf{Ergebnis:} Mutter 181 Varianten (170 widersprüchlich, 11 eindeutig), Vater 188 (177 und 11).
+ 
+\subsection{Kandidatentabelle, strenger Filter und Qualitätsklassen}
+Das VCF mit den verschachtelten \texttt{CSQ}-Einträgen ist schwer lesbar. Zwei kleine Python-Skripte machen daraus eine Tabelle. \texttt{auswertung.py} liest das \texttt{CSQ}-Format aus dem Kopf, schreibt pro Variante und Gen eine Zeile (Position, Allele, Gen, Konsequenz, ClinVar-Wert, Genotyp), ergänzt aus dem FORMAT-Feld Tiefe (DP), Genotypqualität (GQ), Read-Zahlen (AD) und die Allelbalance AB~=~Alt-Reads / (Ref- + Alt-Reads) und entfernt Dubletten. \texttt{kandidaten\_filter.py} behält nur Zeilen mit \texttt{Pathogenic} oder \texttt{Likely\_pathogenic}, einer proteinverändernden Konsequenz (Missense, Stop-Gain, Frameshift, Splice-Akzeptor und -Donor, Start-Verlust, Stop-Verlust, Inframe) und ohne den Hinweis auf Nonsense-vermittelten Abbau (NMD). Danach ordnet es jeder Zeile eine Klasse zu (Spalte \texttt{QUALITAET}):
+\begin{itemize}
+\item \textbf{belastbar:} heterozygot mit AB 0,35--0,75, DP~$\geq$~15 und GQ~$\geq$~30; homozygot (1/1) mit AB~$\geq$~0,85 und denselben Mindestwerten.
+\item \textbf{unsicher:} alle übrigen Fälle, auch Indels mit AB~$<$~0,25, weil der Caller den Alt-Anteil bei Indels systematisch unterschätzt.
+\item \textbf{Artefaktverdacht:} SNVs mit AB~$<$~0,25 (heterozygot) und homozygote Treffer mit AB~$<$~0,5. Sie werden nicht in die Ausgabe übernommen, sondern auf stderr gelistet.
+\end{itemize}
+Die Schwellen sind pragmatisch und nicht an einem Truth Set kalibriert.
+\begin{lstlisting}
+rule kandidaten_tabelle:
+    input: vcf = ".../pathogene.vcf",
+           skript = "auswertung.py"
+    output: tsv = ".../pathogene_tabelle.tsv"
+    shell: "python {input.skript} {input.vcf} > {output.tsv}"
+ 
+rule kandidaten_streng:
+    input: tsv = ".../pathogene_tabelle.tsv",
+           skript = "kandidaten_filter.py"
+    output: tsv = ".../kandidaten_streng.tsv"
+    shell: "python {input.skript} {input.tsv} > {output.tsv}"
+\end{lstlisting}
+\textbf{Ergebnis:} Der strenge ClinVar-Filter lieferte bei beiden Eltern 11 Treffer (Vater: 9 proteinverändernd). Nach dem Qualitätsfilter bleiben \textbf{7 Kandidaten bei der Mutter} und \textbf{6 beim Vater}, alle heterozygot.
+ 
+\subsection{Qualitätszusammenfassung}
+Eine weitere Regel sammelt die Zahlen aus fastp, MarkDuplicates und \texttt{samtools flagstat} in einer Textdatei (\texttt{qc/<Probe>.zusammenfassung.txt}). Sie gehört nicht zur Zielregel \texttt{all} und wird gezielt aufgerufen (siehe Abschnitt~\ref{sec:lauf}).
+ 
+\section{Technische Prüfung der Kandidaten}
+Ein ClinVar-Treffer sagt nichts darüber, ob die Variante im eigenen Datensatz echt ist. Deshalb wurden die Kandidaten zusätzlich geprüft:
+\begin{itemize}
+\item \textbf{Allelbalance (aus AD):} Eine echte heterozygote Variante liegt bei etwa 0,5; bei Indels ist der AD-Wert verzerrt.
+\item \textbf{Mapping-Qualität (MAPQ):} Mittelwert und Anteil der Reads mit MAPQ~$<$~20 am Locus. Niedrige Werte weisen auf mehrdeutige Positionen hin, etwa bei Paralogen und Pseudogenen.
+\item \textbf{GATK-Hard-Filter-Schwellen (nur zur Beurteilung, nicht angewendet):} SNV mit QD~$<$~2, QUAL~$<$~30, SOR~$>$~3, FS~$>$~60, MQ~$<$~40, MQRankSum~$<-12{,}5$, ReadPosRankSum~$<-8$; Indel mit QD~$<$~2, QUAL~$<$~30, FS~$>$~200, ReadPosRankSum~$<-20$.
+\end{itemize}
+\textbf{Mutter (7 Kandidaten):} belastbar sind \gene{TPP1} (AB 0,66), \gene{PAH} (0,61) und \gene{PLG} (0,39). Unsicher sind \gene{PRSS1} 7:142750561 (0,32; Region mit Paralogen), \gene{SERPINA1} (0,17; FS 34,6, SOR 4,97), \gene{VPS13B} (0,18; nur 3 Alt-Reads bei DP 17) und \gene{PI4KA} (0,10; QD 1,12, 18,9~\% der Reads mit niedriger MAPQ, Pseudogene). Als Artefaktverdacht verworfen wurden \gene{TUBB8} (0,14), \gene{CNN2} an zwei Positionen (0,20 und 0,17) und \gene{PRSS1} 7:142750600 (0,12).
+ 
+\textbf{Vater (6 Kandidaten):} belastbar sind \gene{POLG} (0,53), \gene{CCDC40} (0,62), \gene{CFTR} (0,47; vier ClinVar-Sterne) und \gene{CLCN1} (0,61). Unsicher sind \gene{LAMB2} (0,28; QD 1,04, SOR 4,97, FS 44,9, null Sterne) und \gene{SERPINA1} (0,13). Verworfen wurden \gene{CNN2} an zwei Positionen (0,13) und \gene{PRSS1} 7:142750561 (0,20).
+ 
+Die Krankheitsangaben und Sterne stammen aus dem ClinVar-Feld \texttt{CLNDN} bzw.\ dem Prüfstatus; sie sind Einreicherangaben, keine Diagnosen. Dass \gene{SERPINA1}, \gene{PRSS1} und \gene{CNN2} bei beiden Eltern an denselben Positionen mit niedriger Allelbalance auftauchen, deutet auf einen systematischen Mapping- oder Calling-Artefakt hin; die \gene{SERPINA1}-Insertion ließ sich in den Roh-Alignments nicht bestätigen. Ein Abgleich mit Populationsfrequenzen (gnomAD) wurde nicht durchgeführt.
+ 
+\section{Elternvergleich}
+\texttt{eltern\_vergleich.py} liest beide Dateien \texttt{kandidaten\_streng.tsv} (nach Qualitätsfilter), schreibt sie gemeinsam nach \texttt{varianten/eltern\_vergleich.tsv} und listet Gene, die bei beiden Eltern, nur bei der Mutter oder nur beim Vater vorkommen. Das Skript gehört nicht zu Snakemake.
+\begin{lstlisting}[language=bash]
+python3 eltern_vergleich.py
+python3 abbildung_paar.py   # Abb. 11
+\end{lstlisting}
+\textbf{Ergebnis:} Gemeinsam ist nur \gene{SERPINA1} (dieselbe Variante, unsicher, nicht bestätigt). Nur bei der Mutter: \gene{PAH}, \gene{PI4KA}, \gene{PLG}, \gene{PRSS1}, \gene{TPP1}, \gene{VPS13B}. Nur beim Vater: \gene{CCDC40}, \gene{CFTR}, \gene{CLCN1}, \gene{LAMB2}, \gene{POLG}. Es gibt also kein Gen mit belastbarer Variante bei beiden Eltern.
+ 
+Die Deutung folgt der Mendelschen Logik: Tragen beide Eltern eine rezessive Variante im selben Gen, hat ein Kind ein Risiko von 25~\% zu erkranken, 50~\% sind Träger und 25~\% tragen sie nicht. Trägt nur ein Elternteil die Variante, ist ein Kind mit 50~\% Träger; bei dominant wirkenden Genen kann es bis zu 50~\% die Variante erben. Der Erbgang steht nicht in den Tabellen und muss je Gen nachgeschlagen werden (\gene{TPP1}, \gene{PAH}, \gene{CFTR}, \gene{CCDC40} klassisch rezessiv, \gene{POLG} und \gene{CLCN1} je nach Krankheitsbild beides, \gene{PRSS1} dominant). Das ist eine Demonstration auf öffentlichen Beispieldaten, keine Risikoabschätzung und keine Diagnose.
+ 
+\section{Visualisierung}
+Die Abbildungsskripte laufen pro Probe. Die Probe wird über die Umgebungsvariablen \texttt{SAMPLE} und \texttt{NAME} gewählt; Ausgabe und JSON-Zwischenwerte liegen in \texttt{abbildungen/<SAMPLE>/}. Beide Eltern erhalten dieselben Farben und Diagrammtypen. Mit \texttt{--neu} werden die Werte neu berechnet. Gestaltet wurde einheitlich mit einem Blauton und einem orangen Akzent, dünnen Elementen und direkter Beschriftung statt Legenden.
+ 
+\begin{table*}[t]
+\centering\small
+\caption{Abbildungen pro Probe und zugehörige Skripte (Nr.~11 gilt für beide Eltern).}
+\label{tab:abb}
+\begin{tabular}{@{}p{0.8cm}p{5.2cm}p{3.2cm}p{7.0cm}@{}}
+\toprule
+Nr. & Datei & Skript & Inhalt\\
+\midrule
+1 & \texttt{1\_trichter.png} & \texttt{abbildungen.py} & Filtertrichter bis zu den Kandidaten\\
+2 & \texttt{2\_konsequenzen.png} & \texttt{abbildungen.py} & VEP-Konsequenzen\\
+3 & \texttt{3\_clinvar.png} & \texttt{abbildungen.py} & ClinVar-Klassen\\
+4 & \texttt{4\_chromosomen.png} & \texttt{abbildungen.py} & Varianten pro Chromosom\\
+5 & \texttt{5\_dichte\_kandidaten.png} & \texttt{abbildungen2.py} & Heatmap der Variantendichte mit Kandidaten\\
+6 & \texttt{6\_kandidaten\_qualitaet.png} & \texttt{abbildungen2.py} & Kandidaten mit Krankheit und Qualität\\
+7 & \texttt{7\_circos.png} & \texttt{einzelgenom.py} & Zirkuläre Genomkarte (Circos)\\
+8 & \texttt{8\_variantenstatistik.png} & \texttt{einzelgenom.py} & Typen, Ti/Tv, Indel-Längen, Heterozygotie\\
+9 & \texttt{9\_coverage\_chromosomen.png} & \texttt{einzelgenom.py} & Sequenziertiefe pro Chromosom\\
+10 & \texttt{10\_sequenzierung\_mapping.png} & \texttt{abbildungen3.py} & Reads pro Schritt, entfernt und markiert\\
+11 & \texttt{11\_allelbalance\_eltern.png} & \texttt{abbildung\_paar.py} & Allelbalance der Treffer beider Eltern\\
+\bottomrule
+\end{tabular}
+\end{table*}
+ 
+Die Sequenziertiefe wird aus \texttt{samtools idxstats} und der mittleren Leselänge geschätzt. Bei weiblichen Proben erwartet man für X etwa 1 und für Y etwa 0 relativ zum Autosomen-Median, bei männlichen jeweils etwa 0,5 (gemessen: Mutter 0,97 / 0,093; Vater 0,50 / 0,411).
+ 
+\section{Ausführung}\label{sec:lauf}
+Der Lauf beginnt mit einem Trockenlauf, der zeigt, welche Regeln ausgeführt würden. Die Mutter ist die Standardprobe; für den Vater wird die Probe über \texttt{--config} gesetzt, wobei das Ziel vor \texttt{--config} stehen muss:
+\begin{lstlisting}[language=bash]
+cd ~/na12878_projekt
+conda activate na12878_pipeline
+snakemake -n
+caffeinate -i snakemake --cores 4
+# Vater (NA12877)
+caffeinate -i snakemake --cores 4 \
+  --config sample=ERR194146 name=NA12877
+\end{lstlisting}
+Qualitätszusammenfassung, Abbildungen und Elternvergleich sind nicht Teil von \texttt{all}. Pro Probe:
+\begin{lstlisting}[language=bash]
+caffeinate -i snakemake --cores 4 \
+  qc/ERR194146.zusammenfassung.txt \
+  --config sample=ERR194146 name=NA12877
+SAMPLE=ERR194146 NAME=NA12877 caffeinate -i bash -c \
+ 'python3 abbildungen.py > /dev/null && \
+  python3 abbildungen2.py --neu && \
+  python3 einzelgenom.py'
+python3 abbildungen3.py
+\end{lstlisting}
+Die Reihenfolge ist wichtig: \texttt{einzelgenom.py} liest \texttt{kandidaten\_werte.json}, das \texttt{abbildungen2.py} erzeugt; \texttt{abbildungen3.py} braucht \texttt{qc/} und \texttt{logs/} der Probe. Danach folgen \texttt{eltern\_vergleich.py} und \texttt{abbildung\_paar.py}. \texttt{--cores} ist bei Snakemake~6 Pflicht (\texttt{-c} gibt es nicht). Ändert man ein Skript, das Eingabe einer Regel ist (etwa \texttt{kandidaten\_filter.py}), läuft nur diese Regel erneut.
+ 
+Die Laufzeiten in Tabelle~\ref{tab:zeit} stammen aus den Snakemake-Protokollen der Mutter; die vier großen Schritte dauerten zusammen etwa 108~Stunden (4,5~Tage). Die gesamte Pipeline des Vaters dauerte rund 45,5~Stunden; die Zeiten hängen stark von der Auslastung des Laptops ab. GATK arbeitet die Chromosomen in der alphabetischen Reihenfolge der Referenz ab, daher entspricht die Position im Fortschrittsprotokoll des HaplotypeCallers nicht dem linearen Fortschritt.
+ 
+\begin{table}[t]
+\centering\small
+\caption{Laufzeiten der Schritte laut Snakemake-Protokoll (Mutter).}
+\label{tab:zeit}
+\begin{tabular}{@{}p{4.6cm}p{2.4cm}@{}}
+\toprule
+Schritt & Dauer\\
+\midrule
+fastp (Trimmen) & 22~min\\
+BWA-MEM und Sortieren & 48~h\\
+MarkDuplicates & 19~h\\
+HaplotypeCaller & 40~h\\
+VEP-Annotation & 45~min\\
+\texttt{filter\_vep} & 21~min\\
+Qualitätszusammenfassung & 1,5~min\\
+\bottomrule
+\end{tabular}
+\end{table}
+ 
+\section{Fehlersuche}
+Folgende Probleme traten tatsächlich auf:
+\begin{description}
+\item[\texttt{perl: Bad CPU type}] VEP ist ein Intel-Programm. Lösung: Rosetta~2 installieren (\texttt{softwareupdate --install-rosetta}).
+\item[Timeout bei \texttt{vep\_install}] Der FTP-Download brach ab. Lösung: Cache-Archiv per \texttt{curl -C -} über HTTPS laden und entpacken.
+\item[\texttt{zcat} auf macOS] Das BSD-\texttt{zcat} liest \texttt{.gz}-Dateien nicht. Lösung: \texttt{gzip -dc datei.gz}.
+\item[\texttt{no matches found} in zsh] Ein Platzhalter ohne Treffer bricht den ganzen Befehl ab. Lösung: Ordner explizit angeben statt \texttt{fastp*}.
+\item[Schleifenvariable wird nicht getrennt] In zsh zerlegt \texttt{set -- \$p} den Inhalt nicht. Lösung: \texttt{c=\$\{p\% *\}; pos=\$\{p\#* \}}.
+\item[Eingefügter Code bricht] Python-Code in einer Zeile eingefügt, verliert die Einrückung. Lösung: Dateien mit \texttt{cat > datei << 'EOF'} anlegen.
+\item[\texttt{-c4} bei Snakemake] Snakemake 6 verlangt \texttt{--cores}.
+\item[\texttt{ModuleNotFoundError: matplotlib}] Fehlendes Paket in der Umgebung. Lösung: \texttt{conda install -n na12878\_pipeline -c conda-forge matplotlib}.
+\item[\texttt{sed -i} auf macOS] Das BSD-\texttt{sed} verlangt ein Argument: \texttt{sed -i '' ...}.
+\item[Scheintreffer unter den pathogenen Varianten] Ohne Variantenfilter erschienen Treffer mit Allelbalance 0,13--0,32 (etwa \gene{CNN2}, \gene{PRSS1}). Lösung: Qualitätsklassen in \texttt{kandidaten\_filter.py}; die Kandidatenliste der Mutter sank dadurch von 11 auf 7.
+\item[Indels fälschlich verworfen] Die erste Fassung wandte AB~$<$~0,25 auch auf Indels an. Lösung: Indels gelten dann nur als \glqq unsicher\grqq{}.
+\item[Falscher Ausgabepfad nach Skript-Patch] Ein automatisches Ersetzen machte aus \texttt{OUT} einen verschachtelten Pfad. Lösung: Zeile mit \texttt{grep -n} prüfen.
+\item[Ziel und \texttt{--config}] Das Snakemake-Ziel muss vor \texttt{--config} stehen.
+\end{description}
+ 
+\section{Grenzen und Hinweise}
+\begin{itemize}
+\item \textbf{Keine Validierung gegen ein Truth Set.} Sensitivität und Präzision der Variantenbestimmung sind nicht quantifiziert. Vorgesehen ist ein Vergleich mit Platinum-Genomes- oder GIAB-Referenzcalls \citep{eberle2017,zook2014}, z.\,B.\ mit rtg vcfeval oder hap.py; die Chromosomennamen (\texttt{1} gegenüber \texttt{chr1}) müssen angeglichen werden.
+\item Das VCF ist ungefiltert (kein VQSR, Hard Filter oder BQSR). Die Qualitätsklassen gelten nur für die ClinVar-Kandidaten, ihre Schwellen sind nicht kalibriert.
+\item Treffer in Regionen mit Paralogen, Pseudogenen oder hohem GC-Gehalt sind anfällig für Mapping-Artefakte; die \gene{SERPINA1}-Insertion wurde in den Roh-Alignments nicht bestätigt.
+\item Auf dem Y-Chromosom stehen in beiden Proben rund 14.000 Varianten, überwiegend Mapping-Artefakte.
+\item Etwa 0,6~\% der gerufenen Varianten fehlen in der VEP-Ausgabe; die Ursache ist nicht vollständig geklärt.
+\item Referenz (Release~111) und VEP-Cache (Release~116) stammen aus verschiedenen Ensembl-Versionen.
+\item ClinVar ändert sich laufend (hier Stand 2026-10-04). Sterne und Krankheitsnamen sind wörtlich übernommen, nicht fachlich neu bewertet.
+\item Abbildungs- und Vergleichsskripte sind nicht in Snakemake eingebunden.
+\item \texttt{alignment/<Probe>.sorted.bam} wird nach der Duplikatmarkierung nicht mehr gebraucht.
+\item Alle Ergebnisse sind ClinVar-Annotationen auf öffentlichen Beispieldaten, keine Diagnosen.
+\end{itemize}
+ 
+\appendix
+\section{Skripte}
+\subsection*{auswertung.py}
+\lstinputlisting{auswertung.py}
+\subsection*{kandidaten\_filter.py}
+\lstinputlisting{kandidaten_filter.py}
+\subsection*{qc\_zusammenfassung.py}
+\lstinputlisting{qc_zusammenfassung.py}
+\subsection*{eltern\_vergleich.py}
+\lstinputlisting{eltern_vergleich.py}
+ 
+\bibliographystyle{plainnat}
+\bibliography{literatur}
+ 
+\end{document}

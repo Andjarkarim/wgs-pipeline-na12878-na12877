@@ -1,0 +1,8 @@
+CHROM	POS	REF	ALT	GEN	KONSEQUENZ	CLINVAR	GENOTYP	AD	DP	GQ	AB	QUALITAET
+11	6617154	C	T	TPP1	splice_acceptor_variant	Pathogenic	0/1	14,27	41	99	0.66	belastbar
+12	102840474	T	C	PAH	missense_variant	Pathogenic	0/1	21,33	54	99	0.61	belastbar
+14	94379549	A	AG	SERPINA1	frameshift_variant	Pathogenic	0/1	52,11	63	99	0.17	unsicher
+22	20709921	TTGTC	T	PI4KA	frameshift_variant	Pathogenic	0/1	28,3	31	42	0.10	unsicher
+6	160706469	A	G	PLG	missense_variant	Pathogenic/Likely_pathogenic	0/1	22,14	36	99	0.39	belastbar
+7	142750561	C	T	PRSS1	missense_variant	Pathogenic/Likely_pathogenic	0/1	46,22	68	99	0.32	unsicher
+8	99832366	TAGTA	T	VPS13B	splice_acceptor_variant&coding_sequence_variant	Likely_pathogenic	0/1	14,3	17	50	0.18	unsicher

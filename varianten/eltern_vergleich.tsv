@@ -1,0 +1,14 @@
+KATEGORIE	GEN	ELTERNTEIL	CHROM	POS	REF	ALT	GENOTYP	KONSEQUENZ	CLINVAR	HINWEIS
+beide:gleiche Variante	SERPINA1	Mutter	14	94379549	A	AG	0/1	frameshift_variant	Pathogenic	
+beide:gleiche Variante	SERPINA1	Vater	14	94379549	A	AG	0/1	frameshift_variant	Pathogenic	
+nur_Mutter	PAH	Mutter	12	102840474	T	C	0/1	missense_variant	Pathogenic	
+nur_Mutter	PI4KA	Mutter	22	20709921	TTGTC	T	0/1	frameshift_variant	Pathogenic	
+nur_Mutter	PLG	Mutter	6	160706469	A	G	0/1	missense_variant	Pathogenic/Likely_pathogenic	
+nur_Mutter	PRSS1	Mutter	7	142750561	C	T	0/1	missense_variant	Pathogenic/Likely_pathogenic	
+nur_Mutter	TPP1	Mutter	11	6617154	C	T	0/1	splice_acceptor_variant	Pathogenic	
+nur_Mutter	VPS13B	Mutter	8	99832366	TAGTA	T	0/1	splice_acceptor_variant&coding_sequence_variant	Likely_pathogenic	
+nur_Vater	CCDC40	Vater	17	80039965	GC	G	0/1	frameshift_variant	Pathogenic	
+nur_Vater	CFTR	Vater	7	117587738	G	A	0/1	splice_acceptor_variant	Pathogenic	
+nur_Vater	CLCN1	Vater	7	143351678	C	T	0/1	stop_gained	Pathogenic/Likely_pathogenic	
+nur_Vater	LAMB2	Vater	3	49132597	T	G	0/1	missense_variant	Likely_pathogenic	
+nur_Vater	POLG	Vater	15	89327201	C	T	0/1	missense_variant	Pathogenic/Likely_pathogenic	

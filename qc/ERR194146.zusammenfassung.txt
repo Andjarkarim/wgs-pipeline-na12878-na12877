@@ -1,0 +1,28 @@
+== fastp (Rohdaten -> getrimmt) ==
+vorher: Reads 1,626,361,156  Basen 164,262,476,756  Q30 90.65 %  GC 40.1 %  Leselänge Ø 101 bp
+nachher: Reads 1,584,374,426  Basen 159,630,464,220  Q30 91.83 %  GC 40.0 %  Leselänge Ø 100 bp
+Filterergebnis: {'passed_filter_reads': 1584374426, 'low_quality_reads': 37754576, 'too_many_N_reads': 4232154, 'adapter_dimer_reads': 0, 'too_short_reads': 0, 'too_long_reads': 0}
+Adapter-Trimming: {'adapter_trimmed_reads': 10192218, 'adapter_trimmed_bases': 391955920, 'read1_adapter_sequence': 'unspecified', 'read2_adapter_sequence': 'unspecified', 'read1_adapter_counts': {'A': 67862, 'AG': 59071, 'AGA': 56264, 'AGAT': 54044, 'AGATC': 52034, 'AGATCG': 50379, 'AGATCGG': 49345, 'AGATCGGA': 47976, 'AGATCGGAA': 45919, 'AGATCGGAAG': 44210, 'AGATCGGAAGA': 42658, 'AGATCGGAAGAG': 41303, 'AGATCGGAAGAGC': 39771, 'AGATCGGAAGAGCA': 38422, 'AGATCGGAAGAGCAC': 36766, 'AGATCGGAAGAGCACA': 35538, 'AGATCGGAAGAGCACAC': 25881, 'AGATCGGAAGAGCACACG': 24922, 'AGATCGGAAGAGCACACGT': 15173, 'AGATCGGAAGAGCACACGTC': 30762, 'AGATCGGAAGAGCACACGTCT': 29848, 'AGATCGGAAGAGCACACGTCTGA': 13647, 'others': 230131}, 'read2_adapter_counts': {'A': 68637, 'AG': 59755, 'AGA': 56699, 'AGAT': 54534, 'AGATC': 52538, 'AGATCG': 49874, 'AGATCGG': 48958, 'AGATCGGA': 47171, 'AGATCGGAA': 45323, 'AGATCGGAAG': 43355, 'AGATCGGAAGA': 41658, 'AGATCGGAAGAG': 40008, 'AGATCGGAAGAGC': 38391, 'AGATCGGAAGAGCG': 36772, 'AGATCGGAAGAGCGT': 34058, 'AGATCGGAAGAGCGTC': 33679, 'AGATCGGAAGAGCGTCG': 24294, 'AGATCGGAAGAGCGTCGT': 22559, 'AGATCGGAAGAGCGTCGTG': 14428, 'AGATCGGAAGAGCGTCGTGT': 27987, 'AGATCGGAAGAGCGTCGTGTA': 20296, 'AGATCGGAAGAGCGTCGTGTAGG': 12384, 'others': 180208}}
+Duplikationsrate (fastp-Schätzung): {'rate': 0.0130761}
+
+== Duplikate (GATK MarkDuplicates) ==
+READ_PAIRS_EXAMINED: 788934756
+UNPAIRED_READS_EXAMINED: 233858
+READ_PAIR_DUPLICATES: 9294161
+PERCENT_DUPLICATION: 0.011869
+ESTIMATED_LIBRARY_SIZE: 33220861252
+
+== Mapping (samtools flagstat, dedup.bam) ==
+1586896177 + 0 in total (QC-passed reads + QC-failed reads)
+1584374426 + 0 primary
+0 + 0 secondary
+2521751 + 0 supplementary
+18730877 + 0 duplicates
+18730877 + 0 primary duplicates
+1580625121 + 0 mapped (99.60% : N/A)
+1578103370 + 0 primary mapped (99.60% : N/A)
+1584374426 + 0 paired in sequencing
+792187213 + 0 read1
+792187213 + 0 read2
+1547255364 + 0 properly paired (97.66% : N/A)
+
