@@ -33,12 +33,12 @@ snakemake --cores 4 --config sample=ERR194146 name=NA12877
 Qualitätszusammenfassung, Abbildungen und Elternvergleich laufen außerhalb von Snakemake:
 
 ```
-SAMPLE=ERR194146 NAME=NA12877 python3 abbildungen.py
-SAMPLE=ERR194146 NAME=NA12877 python3 abbildungen2.py --neu
-SAMPLE=ERR194146 NAME=NA12877 python3 einzelgenom.py
-python3 abbildungen3.py
-python3 eltern_vergleich.py
-python3 abbildung_paar.py
+SAMPLE=ERR194146 NAME=NA12877 python3 skripte/abbildungen.py
+SAMPLE=ERR194146 NAME=NA12877 python3 skripte/abbildungen2.py --neu
+SAMPLE=ERR194146 NAME=NA12877 python3 skripte/einzelgenom.py
+python3 skripte/abbildungen3.py
+python3 skripte/eltern_vergleich.py
+python3 skripte/abbildung_paar.py
 ```
 
 ## Software

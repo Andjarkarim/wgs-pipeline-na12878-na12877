@@ -164,7 +164,7 @@ Alle Befehle werden im Projektordner \texttt{\textasciitilde/na12878\_projekt} a
 \begin{lstlisting}[language=bash,basicstyle=\ttfamily\tiny]
 na12878_projekt/
   Snakefile            Workflow
-  *.py                 Auswertung, Filter, Abbildungen,
+  skripte/             Auswertung, Filter, Abbildungen,
                        Elternvergleich
   rohdaten/            FASTQ (Eingabe)
   referenz/            Genom, Index, ClinVar
@@ -321,13 +321,13 @@ Die Schwellen sind pragmatisch und nicht an einem Truth Set kalibriert.
 \begin{lstlisting}
 rule kandidaten_tabelle:
     input: vcf = ".../pathogene.vcf",
-           skript = "auswertung.py"
+           skript = "skripte/auswertung.py"
     output: tsv = ".../pathogene_tabelle.tsv"
     shell: "python {input.skript} {input.vcf} > {output.tsv}"
  
 rule kandidaten_streng:
     input: tsv = ".../pathogene_tabelle.tsv",
-           skript = "kandidaten_filter.py"
+           skript = "skripte/kandidaten_filter.py"
     output: tsv = ".../kandidaten_streng.tsv"
     shell: "python {input.skript} {input.tsv} > {output.tsv}"
 \end{lstlisting}
@@ -352,8 +352,8 @@ Die Krankheitsangaben und Sterne stammen aus dem ClinVar-Feld \texttt{CLNDN} bzw
 \section{Elternvergleich}
 \texttt{eltern\_vergleich.py} liest beide Dateien \texttt{kandidaten\_streng.tsv} (nach Qualitätsfilter), schreibt sie gemeinsam nach \texttt{varianten/eltern\_vergleich.tsv} und listet Gene, die bei beiden Eltern, nur bei der Mutter oder nur beim Vater vorkommen. Das Skript gehört nicht zu Snakemake.
 \begin{lstlisting}[language=bash]
-python3 eltern_vergleich.py
-python3 abbildung_paar.py   # Abb. 11
+python3 skripte/eltern_vergleich.py
+python3 skripte/abbildung_paar.py   # Abb. 11
 \end{lstlisting}
 \textbf{Ergebnis:} Gemeinsam ist nur \gene{SERPINA1} (dieselbe Variante, unsicher, nicht bestätigt). Nur bei der Mutter: \gene{PAH}, \gene{PI4KA}, \gene{PLG}, \gene{PRSS1}, \gene{TPP1}, \gene{VPS13B}. Nur beim Vater: \gene{CCDC40}, \gene{CFTR}, \gene{CLCN1}, \gene{LAMB2}, \gene{POLG}. Es gibt also kein Gen mit belastbarer Variante bei beiden Eltern.
  
@@ -404,10 +404,10 @@ caffeinate -i snakemake --cores 4 \
   qc/ERR194146.zusammenfassung.txt \
   --config sample=ERR194146 name=NA12877
 SAMPLE=ERR194146 NAME=NA12877 caffeinate -i bash -c \
- 'python3 abbildungen.py > /dev/null && \
-  python3 abbildungen2.py --neu && \
-  python3 einzelgenom.py'
-python3 abbildungen3.py
+ 'python3 skripte/abbildungen.py > /dev/null && \
+  python3 skripte/abbildungen2.py --neu && \
+  python3 skripte/einzelgenom.py'
+python3 skripte/abbildungen3.py
 \end{lstlisting}
 Die Reihenfolge ist wichtig: \texttt{einzelgenom.py} liest \texttt{kandidaten\_werte.json}, das \texttt{abbildungen2.py} erzeugt; \texttt{abbildungen3.py} braucht \texttt{qc/} und \texttt{logs/} der Probe. Danach folgen \texttt{eltern\_vergleich.py} und \texttt{abbildung\_paar.py}. \texttt{--cores} ist bei Snakemake~6 Pflicht (\texttt{-c} gibt es nicht). Ändert man ein Skript, das Eingabe einer Regel ist (etwa \texttt{kandidaten\_filter.py}), läuft nur diese Regel erneut.
  
@@ -467,13 +467,13 @@ Folgende Probleme traten tatsächlich auf:
 \appendix
 \section{Skripte}
 \subsection*{auswertung.py}
-\lstinputlisting{auswertung.py}
+\lstinputlisting{skripte/auswertung.py}
 \subsection*{kandidaten\_filter.py}
-\lstinputlisting{kandidaten_filter.py}
+\lstinputlisting{skripte/kandidaten_filter.py}
 \subsection*{qc\_zusammenfassung.py}
-\lstinputlisting{qc_zusammenfassung.py}
+\lstinputlisting{skripte/qc_zusammenfassung.py}
 \subsection*{eltern\_vergleich.py}
-\lstinputlisting{eltern_vergleich.py}
+\lstinputlisting{skripte/eltern_vergleich.py}
  
 \bibliographystyle{plainnat}
 \bibliography{literatur}

@@ -114,7 +114,7 @@ rule filter_pathogenic:
 rule kandidaten_tabelle:
     input:
         vcf = f"varianten/{SAMPLE}.pathogene.vcf",
-        skript = "auswertung.py"
+        skript = "skripte/auswertung.py"
     output:
         tsv = f"varianten/{SAMPLE}.pathogene_tabelle.tsv"
     shell:
@@ -123,7 +123,7 @@ rule kandidaten_tabelle:
 rule kandidaten_streng:
     input:
         tsv = f"varianten/{SAMPLE}.pathogene_tabelle.tsv",
-        skript = "kandidaten_filter.py"
+        skript = "skripte/kandidaten_filter.py"
     output:
         tsv = f"varianten/{SAMPLE}.kandidaten_streng.tsv"
     shell:
@@ -134,7 +134,7 @@ rule qc_zusammenfassung:
         fastp = f"logs/{SAMPLE}.fastp.json",
         dedup = f"logs/{SAMPLE}.dedup_metrics.txt",
         bam = f"alignment/{SAMPLE}.dedup.bam",
-        skript = "qc_zusammenfassung.py"
+        skript = "skripte/qc_zusammenfassung.py"
     output:
         flagstat = f"qc/{SAMPLE}.flagstat.txt",
         txt = f"qc/{SAMPLE}.zusammenfassung.txt"
