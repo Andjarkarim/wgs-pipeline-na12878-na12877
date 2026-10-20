@@ -276,7 +276,7 @@ rule variant_calling:
     shell: gatk HaplotypeCaller -R {input.ref}
         -I {input.bam} -O {output.vcf}
 \end{lstlisting}
-Abweichend von den GATK Best Practices \citep{vanderauwera2013} gab es weder eine Rekalibrierung der Basenqualitäten (BQSR) noch eine Variantenfilterung (VQSR oder Hard-Filter). \textbf{Ergebnis:} 4.893.226 (Mutter) bzw.\ 4.889.622 (Vater) Varianten im ungefilterten VCF; Ti/Tv jeweils 1,98 (nur Chromosomen).
+Abweichend von den GATK Best Practices \citep{vanderauwera2013} gab es weder eine Rekalibrierung der Basenqualitäten (BQSR) noch eine Variantenfilterung (VQSR oder Hard-Filter). \textbf{Ergebnis:} 4.893.226 (Mutter) bzw.\ 4.889.622 (Vater) Varianten im ungefilterten VCF; Ti/Tv jeweils 1,98 (biallelische SNVs auf den Chromosomen, eigenes Skript; \texttt{bcftools stats} über alle Contigs und Allele: 1,96).
  
 \subsection{Annotation (VEP und ClinVar)}
 Eine Variante bekommt erst Bedeutung, wenn man weiß, was sie im Gen bewirkt. VEP \citep{mclaren2016} ordnet jede Variante den Transkripten zu und benennt die Konsequenz mit Begriffen der Sequence Ontology (zum Beispiel \texttt{missense\_variant}, \texttt{frameshift\_variant}). Pro Variante entstehen mehrere Einträge, einer je Transkript; sie stehen im INFO-Feld \texttt{CSQ}. Mit \texttt{--custom} wird ClinVar als zusätzliche Spur angehängt.
