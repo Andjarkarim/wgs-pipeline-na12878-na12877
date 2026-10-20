@@ -20,6 +20,20 @@ FASTQ -> FastQC -> fastp (Trimmen) -> BWA-MEM (GRCh38) -> samtools sort -> GATK 
 
 Im Elternvergleich gibt es kein Gen mit einer belastbaren Variante bei beiden Eltern. SERPINA1 erscheint bei beiden mit derselben Variante, aber niedriger Allelbalance und ohne Bestätigung in den Roh-Alignments (vermutlich ein Artefakt). Details stehen in `bericht.tex` und `dokumentation.tex`.
 
+## Installation
+
+Drei getrennte conda-Umgebungen, jeweils aus einer Datei im Repository:
+
+```
+conda env create -f environment.yml
+CONDA_SUBDIR=osx-64 conda env create -f environment_vep.yml
+conda env create -f environment_validierung.yml
+```
+
+`environment.yml` enthält die Pipeline (Snakemake, BWA, GATK, Python mit pycirclize), `environment_vep.yml` Ensembl VEP und `environment_validierung.yml` rtg-tools für die Validierung. Das Flag `CONDA_SUBDIR=osx-64` ist nur auf Apple-Silicon-Macs nötig, weil VEP dort über Rosetta 2 läuft. Auf Linux oder Intel-Macs entfällt es.
+
+Nicht im Repository enthalten sind die großen Datendateien (FASTQ-Dateien, Referenzgenom, VEP-Cache, ClinVar-VCF). Die Download-Befehle stehen in der Dokumentation.
+
 ## Aufruf
 
 Mutter (Standardprobe) und Vater:
@@ -43,7 +57,7 @@ python3 skripte/abbildung_paar.py
 
 ## Software
 
-Snakemake 6.1.2, fastp, BWA 0.7.x, samtools, GATK 4.6.x, bcftools, Ensembl VEP 116 (eigene conda-Umgebung), Python 3.10 mit matplotlib und pycirclize. Die Umgebung steht in `environment.yml`.
+Snakemake 6.1.2, fastp, BWA 0.7.x, samtools, GATK 4.6.x, bcftools, Ensembl VEP 116 (eigene conda-Umgebung), Python 3.10 mit matplotlib und pycirclize. Die Umgebungen stehen in `environment.yml`, `environment_vep.yml` und `environment_validierung.yml`.
 
 ## Validierung
 
