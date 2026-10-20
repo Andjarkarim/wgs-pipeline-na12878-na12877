@@ -475,7 +475,7 @@ Folgende Probleme traten tatsächlich auf:
 \item Das VCF ist ungefiltert (kein VQSR, Hard Filter oder BQSR). Die Qualitätsklassen gelten nur für die ClinVar-Kandidaten, ihre Schwellen sind nicht kalibriert.
 \item Treffer in Regionen mit Paralogen, Pseudogenen oder hohem GC-Gehalt sind anfällig für Mapping-Artefakte; die \gene{SERPINA1}-Insertion wurde in den Roh-Alignments nicht bestätigt.
 \item Auf dem Y-Chromosom stehen in beiden Proben rund 14.000 Varianten, überwiegend Mapping-Artefakte.
-\item Etwa 0,6~\% der gerufenen Varianten fehlen in der VEP-Ausgabe; die Ursache ist nicht vollständig geklärt.
+\item Etwa 0,6~\% der gerufenen Varianten fehlen in der VEP-Ausgabe (Mutter 28.666, Vater 25.588). Sie liegen alle auf Contigs außerhalb der Chromosomen 1--22, X und Y; auf diesen Chromosomen wurden alle Varianten annotiert (4.808.830 bzw.\ 4.811.223). Den Grund dafür und ob darunter ClinVar-Einträge liegen, habe ich nicht untersucht.
 \item Referenz (Release~111) und VEP-Cache (Release~116) stammen aus verschiedenen Ensembl-Versionen.
 \item ClinVar ändert sich laufend (hier Stand 2026-10-04). Sterne und Krankheitsnamen sind wörtlich übernommen, nicht fachlich neu bewertet.
 \item Abbildungs- und Vergleichsskripte sind nicht in Snakemake eingebunden.
