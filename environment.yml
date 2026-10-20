@@ -16,3 +16,6 @@ dependencies:
   - stopit
   - numpy
   - matplotlib
+  - pip
+  - pip:
+      - pycirclize==1.10.1
