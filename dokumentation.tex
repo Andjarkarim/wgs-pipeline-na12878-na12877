@@ -47,7 +47,7 @@ von FASTQ-Rohdaten zu annotierten ClinVar-Kandidaten und einem Elternvergleich (
 \maketitle
 \renewcommand{\abstractname}{Zusammenfassung}
 \begin{abstract}
-Diese Dokumentation beschreibt eine vollständige Pipeline zur Auswertung menschlicher Ganzgenomsequenzierungen (WGS) auf einem Laptop. Ausgehend von den Rohdaten zweier Proben des Platinum-Genomes-Pedigrees, NA12878 (Mutter, Lauf ERR194147) und NA12877 (Vater, Lauf ERR194146), jeweils etwa 50-fache Tiefe, werden Qualitätskontrolle, Trimmen, Mapping, Duplikatmarkierung, Variantenbestimmung, Annotation mit VEP und ClinVar, die Filterung pathogener Kandidaten und eine Qualitätsprüfung anhand der Allelbalance als Snakemake-Workflow und ergänzende Python-Skripte umgesetzt. Ein Vergleichsskript stellt die Kandidaten beider Eltern gegenüber. Für jeden Schritt werden die biologische Idee, das verwendete Werkzeug, die Snakemake-Regel, die Ein- und Ausgabedateien und die tatsächlich erzielten Zahlen erklärt. Ergänzt wird dies durch eine Schritt-für-Schritt-Anleitung zur Reproduktion, eine Liste der aufgetretenen Probleme mit ihren Lösungen und eine offene Darstellung der Grenzen, insbesondere der noch fehlenden Validierung gegen ein Truth Set.
+Diese Dokumentation beschreibt eine vollständige Pipeline zur Auswertung menschlicher Ganzgenomsequenzierungen (WGS) auf einem Laptop. Ausgehend von den Rohdaten zweier Proben des Platinum-Genomes-Pedigrees, NA12878 (Mutter, Lauf ERR194147) und NA12877 (Vater, Lauf ERR194146), jeweils etwa 50-fache Tiefe, werden Qualitätskontrolle, Trimmen, Mapping, Duplikatmarkierung, Variantenbestimmung, Annotation mit VEP und ClinVar, die Filterung pathogener Kandidaten und eine Qualitätsprüfung anhand der Allelbalance als Snakemake-Workflow und ergänzende Python-Skripte umgesetzt. Ein Vergleichsskript stellt die Kandidaten beider Eltern gegenüber. Für jeden Schritt werden die biologische Idee, das verwendete Werkzeug, die Snakemake-Regel, die Ein- und Ausgabedateien und die tatsächlich erzielten Zahlen erklärt. Ergänzt wird dies durch eine Schritt-für-Schritt-Anleitung zur Reproduktion, eine Liste der aufgetretenen Probleme mit ihren Lösungen und eine offene Darstellung der Grenzen, insbesondere der eingeschränkten Validierung gegen Referenzcalls.
 \end{abstract}
 \noindent\textbf{Schlüsselwörter:} Snakemake, WGS, BWA-MEM, GATK, VEP, ClinVar, Reproduzierbarkeit
 \bigskip
@@ -349,6 +349,25 @@ Ein ClinVar-Treffer sagt nichts darüber, ob die Variante im eigenen Datensatz e
  
 Die Krankheitsangaben und Sterne stammen aus dem ClinVar-Feld \texttt{CLNDN} bzw.\ dem Prüfstatus; sie sind Einreicherangaben, keine Diagnosen. Dass \gene{SERPINA1}, \gene{PRSS1} und \gene{CNN2} bei beiden Eltern an denselben Positionen mit niedriger Allelbalance auftauchen, deutet auf einen systematischen Mapping- oder Calling-Artefakt hin; die \gene{SERPINA1}-Insertion ließ sich in den Roh-Alignments nicht bestätigen. Ein Abgleich mit Populationsfrequenzen (gnomAD) wurde nicht durchgeführt.
  
+\section{Validierung gegen Referenzcalls}
+\subsection{Idee}
+Ob die Variantenbestimmung zuverlässig ist, zeigt erst der Vergleich mit einer Liste, die als richtig gilt (Truth Set). Eine Variante des eigenen VCF ist richtig gefunden (TP), wenn sie im Truth Set steht, und falsch gefunden (FP), wenn nicht. Eine Variante des Truth Sets, die im eigenen VCF fehlt, ist übersehen (FN). Daraus folgen Präzision = TP/(TP+FP) und Sensitivität = TP/(TP+FN). Beide werden nur innerhalb der Konfidenzregionen berechnet, in denen das Truth Set als vollständig gilt.
+
+\subsection{Truth Set und Werkzeug}
+Verwendet werden die Platinum-Genomes-Referenzcalls (Version 2017-1.0, GRCh38) für NA12878 und NA12877 \citep{eberle2017} mit der Datei der Konfidenzregionen. Sie liegen im öffentlichen S3-Bucket \texttt{platinum-genomes}; der FTP-Server von Illumina antwortete nicht. Der Vergleich läuft mit \texttt{rtg vcfeval} (RTG Tools 3.13) in einer eigenen conda-Umgebung \texttt{validierung} (Datei \texttt{environment\_validierung.yml}), damit die Pipeline-Umgebung unverändert bleibt. \texttt{rtg vcfeval} vergleicht auf Haplotypebene und erkennt deshalb auch unterschiedlich geschriebene Darstellungen derselben Variante.
+
+\subsection{Schritte}
+Das Skript \texttt{skripte/validierung.sh} führt alles aus: Download, Umbenennen der Chromosomen (\texttt{chr1} nach \texttt{1}, nur 1--22 und X, weil das Truth Set kein Y enthält), Umwandeln der Referenz in das rtg-Format (\texttt{rtg format}) und die beiden Vergleiche (NA12878 gegen ERR194147, NA12877 gegen ERR194146). Aufruf:
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily\small]
+conda env create -f environment_validierung.yml
+conda activate validierung
+bash skripte/validierung.sh
+\end{lstlisting}
+Die Ausgabeordner \texttt{validierung/vcfeval\_*} dürfen vorher nicht existieren.
+
+\subsection{Ergebnis}
+Ungefiltert erreichen SNVs in beiden Proben eine Präzision und Sensitivität von rund 99,3~\%, Indels und komplexe Varianten von 96,8 bis 97,4~\%. Insgesamt liegen beide Maße bei rund 99,0~\% (F-Maß 0,9900 bei der Mutter, 0,9903 beim Vater). Ein Schwellenwert auf QUAL verbessert das kaum (0,9901 bzw.\ 0,9904). Die vollständigen Zahlen stehen in \texttt{validierung/ergebnisse/zusammenfassung.txt} und im Bericht (Abschnitt Validierung gegen Referenzcalls).
+
 \section{Elternvergleich}
 \texttt{eltern\_vergleich.py} liest beide Dateien \texttt{kandidaten\_streng.tsv} (nach Qualitätsfilter), schreibt sie gemeinsam nach \texttt{varianten/eltern\_vergleich.tsv} und listet Gene, die bei beiden Eltern, nur bei der Mutter oder nur beim Vater vorkommen. Das Skript gehört nicht zu Snakemake.
 \begin{lstlisting}[language=bash]
@@ -452,7 +471,7 @@ Folgende Probleme traten tatsächlich auf:
  
 \section{Grenzen und Hinweise}
 \begin{itemize}
-\item \textbf{Keine Validierung gegen ein Truth Set.} Sensitivität und Präzision der Variantenbestimmung sind nicht quantifiziert. Vorgesehen ist ein Vergleich mit Platinum-Genomes- oder GIAB-Referenzcalls \citep{eberle2017,zook2014}, z.\,B.\ mit rtg vcfeval oder hap.py; die Chromosomennamen (\texttt{1} gegenüber \texttt{chr1}) müssen angeglichen werden.
+\item \textbf{Eingeschränkte Validierung.} Der Abgleich mit den Platinum-Genomes-Referenzcalls gilt nur für die Konfidenzregionen (Chromosomen 1--22 und X), nicht für schwierige Regionen, das Y-Chromosom und das Mitochondrium. Das Truth Set beruht auf Sequenzdaten desselben Pedigrees \citep{eberle2017} und ist daher nicht vollständig unabhängig; die Werte können die tatsächliche Genauigkeit überschätzen. Ein Vergleich mit einem unabhängigen Truth Set (GIAB, \citealp{zook2014}) steht noch aus.
 \item Das VCF ist ungefiltert (kein VQSR, Hard Filter oder BQSR). Die Qualitätsklassen gelten nur für die ClinVar-Kandidaten, ihre Schwellen sind nicht kalibriert.
 \item Treffer in Regionen mit Paralogen, Pseudogenen oder hohem GC-Gehalt sind anfällig für Mapping-Artefakte; die \gene{SERPINA1}-Insertion wurde in den Roh-Alignments nicht bestätigt.
 \item Auf dem Y-Chromosom stehen in beiden Proben rund 14.000 Varianten, überwiegend Mapping-Artefakte.
@@ -474,6 +493,8 @@ Folgende Probleme traten tatsächlich auf:
 \lstinputlisting{skripte/qc_zusammenfassung.py}
 \subsection*{eltern\_vergleich.py}
 \lstinputlisting{skripte/eltern_vergleich.py}
+\subsection*{validierung.sh}
+\lstinputlisting{skripte/validierung.sh}
  
 \bibliographystyle{plainnat}
 \bibliography{literatur}

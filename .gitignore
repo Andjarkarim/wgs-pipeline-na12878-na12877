@@ -34,3 +34,5 @@ abbildungen/10_*.png
 abbildungen/*.json
 varianten/kandidaten_streng.tsv
 varianten/pathogene_tabelle.tsv
+validierung/*
+!validierung/ergebnisse/

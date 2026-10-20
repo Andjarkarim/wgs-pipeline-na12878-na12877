@@ -26,11 +26,11 @@
 \begin{minipage}{0.92\textwidth}
 \small
 \textbf{Zusammenfassung.}
-Ich habe f\"ur zwei Proben des Platinum-Genomes-Pedigrees, NA12878 (Mutter, ERR194147) und NA12877 (Vater, ERR194146), jeweils eine Pipeline von den Rohdaten (Illumina-Paired-End, rund 50-fache Tiefe) bis zu annotierten ClinVar-Kandidaten aufgebaut und mit Snakemake umgesetzt: Qualit\"atskontrolle und Trimming (fastp), Mapping (BWA-MEM gegen GRCh38), Duplikatmarkierung (GATK), Variantenbestimmung (HaplotypeCaller) und Annotation (VEP mit ClinVar). Es wurden 4.893.226 (Mutter) und 4.889.622 (Vater) Varianten gefunden. Ein strenger Filter auf \emph{Pathogenic} und \emph{Likely pathogenic} lieferte je 11 Kandidaten. Die Pipeline enth\"alt keinen Variantenfilter; deshalb habe ich die Kandidaten anhand von Allelbalance, Tiefe und Genotypqualit\"at nachgepr\"uft. Dabei fielen vier (Mutter) bzw.\ drei (Vater) Treffer als Artefaktverdacht heraus; es blieben 7 bzw.\ 6 Kandidaten, von denen 3 bzw.\ 4 als belastbar gelten. Der Vergleich beider Genome ergab kein Gen, in dem beide Eltern eine belastbare Variante tragen. Die Ergebnisse sind ClinVar-Annotationen und keine Diagnosen; eine Validierung gegen ein Referenz-Truth-Set steht noch aus.
+Ich habe f\"ur zwei Proben des Platinum-Genomes-Pedigrees, NA12878 (Mutter, ERR194147) und NA12877 (Vater, ERR194146), jeweils eine Pipeline von den Rohdaten (Illumina-Paired-End, rund 50-fache Tiefe) bis zu annotierten ClinVar-Kandidaten aufgebaut und mit Snakemake umgesetzt: Qualit\"atskontrolle und Trimming (fastp), Mapping (BWA-MEM gegen GRCh38), Duplikatmarkierung (GATK), Variantenbestimmung (HaplotypeCaller) und Annotation (VEP mit ClinVar). Es wurden 4.893.226 (Mutter) und 4.889.622 (Vater) Varianten gefunden. Ein strenger Filter auf \emph{Pathogenic} und \emph{Likely pathogenic} lieferte je 11 Kandidaten. Die Pipeline enth\"alt keinen Variantenfilter; deshalb habe ich die Kandidaten anhand von Allelbalance, Tiefe und Genotypqualit\"at nachgepr\"uft. Dabei fielen vier (Mutter) bzw.\ drei (Vater) Treffer als Artefaktverdacht heraus; es blieben 7 bzw.\ 6 Kandidaten, von denen 3 bzw.\ 4 als belastbar gelten. Der Vergleich beider Genome ergab kein Gen, in dem beide Eltern eine belastbare Variante tragen. Ein Abgleich der ungefilterten Calls mit den Platinum-Genomes-Referenzcalls ergab innerhalb der Konfidenzregionen f\"ur SNVs eine Pr\"azision und Sensitivit\"at von rund 99,3~\%, f\"ur Indels von rund 97~\%. Die Ergebnisse sind ClinVar-Annotationen und keine Diagnosen.
 
 \medskip
 \textbf{Abstract.}
-For two samples of the Platinum Genomes pedigree, NA12878 (mother) and NA12877 (father), I built a Snakemake pipeline from raw Illumina paired-end reads (about 50-fold coverage) to ClinVar-annotated candidate variants (fastp, BWA-MEM on GRCh38, GATK MarkDuplicates and HaplotypeCaller, VEP). About 4.89 million variants were called per genome, and a strict filter for \emph{Pathogenic} and \emph{Likely pathogenic} yielded 11 candidates each. Because the pipeline applies no variant filter, candidates were checked by allele balance, depth and genotype quality; 7 (mother) and 6 (father) remained, of which 3 and 4 are considered reliable. No gene carries a reliable candidate in both parents. Results are ClinVar annotations, not diagnoses, and have not yet been validated against a truth set.
+For two samples of the Platinum Genomes pedigree, NA12878 (mother) and NA12877 (father), I built a Snakemake pipeline from raw Illumina paired-end reads (about 50-fold coverage) to ClinVar-annotated candidate variants (fastp, BWA-MEM on GRCh38, GATK MarkDuplicates and HaplotypeCaller, VEP). About 4.89 million variants were called per genome, and a strict filter for \emph{Pathogenic} and \emph{Likely pathogenic} yielded 11 candidates each. Because the pipeline applies no variant filter, candidates were checked by allele balance, depth and genotype quality; 7 (mother) and 6 (father) remained, of which 3 and 4 are considered reliable. No gene carries a reliable candidate in both parents. Against the Platinum Genomes reference calls, the unfiltered calls reached precision and sensitivity of about 99.3~\% for SNVs and about 97~\% for indels within the confident regions. Results are ClinVar annotations, not diagnoses.
 \end{minipage}
 \end{center}
 \vspace{1em}
@@ -62,6 +62,9 @@ Aus dem AD-Feld der VCF-Datei wurde die Allelbalance AB als Anteil der Alt-Reads
 \item \emph{Artefaktverdacht}: SNVs mit AB $<$ 0,25 (heterozygot) bzw.\ AB $<$ 0,5 (homozygot); sie werden verworfen.
 \end{itemize}
 Die Schwellen sind pragmatisch gew\"ahlt und nicht an einem Truth Set optimiert.
+
+\subsection{Validierung}
+Die Variantenbestimmung wurde mit den Platinum-Genomes-Referenzcalls (Version 2017-1.0, GRCh38; \citealp{eberle2017}) f\"ur NA12878 und NA12877 gepr\"uft. Verglichen wurden die ungefilterten VCF-Dateien innerhalb der mitgelieferten Konfidenzregionen mit rtg vcfeval (RTG Tools 3.13), das auch unterschiedliche Schreibweisen derselben Variante abgleicht. Die Chromosomennamen des Truth Sets (\texttt{chr1}) wurden an die Referenz (\texttt{1}) angepasst. Das Truth Set enth\"alt nur die Chromosomen 1--22 und X; Y-Chromosom und Mitochondrium sind daher nicht bewertet. Ma\ss e sind Pr\"azision, TP/(TP+FP), und Sensitivit\"at, TP/(TP+FN), getrennt f\"ur SNVs und \"ubrige Varianten (Indels und komplexe Varianten).
 
 \subsection{Workflow und Visualisierung}
 Die Pipeline ist mit Snakemake \citep{molder2021} umgesetzt; die Probe wird \"uber die Konfiguration (\texttt{sample}, \texttt{name}) gew\"ahlt. Der Kandidatenfilter, der Elternvergleich und die Abbildungen sind eigenst\"andige Python-Skripte au\ss erhalb von Snakemake. Abbildungen wurden mit Matplotlib \citep{hunter2007} erstellt. Zur Einordnung der Geschlechtschromosomen wurde die Tiefe von X und Y relativ zum Median der Autosomen berechnet.
@@ -170,6 +173,30 @@ Het/Hom & 1,70 & 1,64\\
 \label{fig:dichte}
 \end{figure*}
 
+\subsection{Validierung gegen Referenzcalls}
+Innerhalb der Konfidenzregionen stimmen die ungefilterten Calls weitgehend mit den Referenzcalls \"uberein (Tab.~\ref{tab:val}). F\"ur SNVs liegen Pr\"azision und Sensitivit\"at in beiden Proben bei rund 99,3~\%. Bei Indels und komplexen Varianten sind sie mit 96,8 bis 97,4~\% niedriger; das passt dazu, dass Insertionen und Deletionen in Wiederholungen mit kurzen Reads schwerer zu bestimmen sind. Insgesamt betragen Pr\"azision und Sensitivit\"at rund 99,0~\% (F-Ma\ss{} 0,9900 bei der Mutter, 0,9903 beim Vater). Ein Schwellenwert auf QUAL verbessert das kaum (F-Ma\ss{} 0,9901 bzw.\ 0,9904); die Fehler lassen sich also nicht durch einen einfachen QUAL-Filter beseitigen.
+
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{Abgleich der ungefilterten Calls mit den Platinum-Genomes-Referenzcalls innerhalb der Konfidenzregionen (rtg vcfeval). TP: richtig gefundene Varianten, FP: falsch gefundene, FN: \"ubersehene; Pr.: Pr\"azision, Sens.: Sensitivit\"at (in \%). Indels u.\,a.: Insertionen, Deletionen und komplexe Varianten.}
+\label{tab:val}
+\begin{tabular}{lrrrrr}
+\toprule
+ & TP & FP & FN & Pr. & Sens. \\
+\midrule
+Mutter, SNVs & 3.571.506 & 25.874 & 23.666 & 99,28 & 99,34 \\
+Mutter, Indels u.\,a. & 554.398 & 15.612 & 18.330 & 97,26 & 96,80 \\
+Mutter, gesamt & 4.125.904 & 41.486 & 41.996 & 99,00 & 98,99 \\
+\midrule
+Vater, SNVs & 3.553.886 & 25.683 & 23.650 & 99,28 & 99,34 \\
+Vater, Indels u.\,a. & 554.354 & 15.040 & 15.763 & 97,36 & 97,24 \\
+Vater, gesamt & 4.108.240 & 40.723 & 39.413 & 99,02 & 99,05 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Annotation und Filtertrichter}
 VEP annotierte 4.864.560 (Mutter) bzw.\ 4.864.034 (Vater) Varianten. Die Differenz zu den gerufenen Varianten betr\"agt in beiden Proben etwa 0,6~\%; sie entspricht der Gr\"o\ss enordnung der Varianten auf Contigs, ich habe sie aber nicht vollst\"andig aufgekl\"art. F\"ur rund 44.000 Varianten gab es einen ClinVar-Treffer, \"uberwiegend als \glqq Benign\grqq{} (Tab.~\ref{tab:trichter}). Als pathogen im weiten Sinn blieben 181 bzw.\ 188 Varianten, davon jeweils nur 11 mit eindeutiger Klassifikation; der Rest hat eine widerspr\"uchliche Klassifikation. Beim Vater sind 9 der 11 Treffer proteinver\"andernd, bei der Mutter alle 11. Der anschlie\ss ende Qualit\"atsfilter (Abschnitt~\ref{sec:kand}) reduziert die Liste auf 7 bzw.\ 6 Kandidaten (Abb.~\ref{fig:trichter}).
 
@@ -277,13 +304,13 @@ Gemeinsam in beiden Genomen erscheint nur \gene{SERPINA1}, und zwar als dieselbe
 Unter den belastbaren Kandidaten gibt es daher kein gemeinsames Gen. Die Mutter tr\"agt Varianten in \gene{TPP1}, \gene{PAH} und \gene{PLG}, der Vater in \gene{POLG}, \gene{CCDC40}, \gene{CFTR} und \gene{CLCN1}. F\"ur klassisch rezessive Erkrankungen wie \gene{TPP1}, \gene{PAH}, \gene{CFTR} und \gene{CCDC40} bedeutet das: Ein gemeinsames Kind h\"atte f\"ur jede dieser Varianten, die nur ein Elternteil tr\"agt, eine Wahrscheinlichkeit von 50~\%, Tr\"ager zu sein, aber kein erh\"ohtes Risiko, selbst zu erkranken, da die zweite Kopie aus dem anderen Elternteil unauff\"allig w\"are. Nur wenn beide Eltern dieselbe rezessive Variante (oder zwei Varianten im selben Gen) tragen, ergibt sich das 25-\%-Risiko mit 50~\% Tr\"agern und 25~\% ohne Variante. Der Erbgang ist in den Tabellen nicht enthalten und m\"usste f\"ur jedes Gen in der Literatur nachgeschlagen werden.
 
 \section{Diskussion}
-Die beiden Genome sind technisch vergleichbar (Tab.~\ref{tab:qc}, \ref{tab:var}); Mapping-Rate, Duplikationsrate, Ti/Tv und Het/Hom-Verh\"altnis liegen im erwarteten Bereich. Das wichtigste inhaltliche Ergebnis ist, dass der strenge ClinVar-Filter ohne Qualit\"atspr\"ufung ein falsches Bild gezeichnet h\"atte: Von je 11 Treffern blieben nach Pr\"ufung nur 7 bzw.\ 6, und nur 3 bzw.\ 4 sind belastbar. Mehrere der verworfenen Treffer liegen in Regionen, die f\"ur Mapping-Probleme bekannt sind (Paraloge, Pseudogene, GC-reiche oder subtelomerische Bereiche). Ein ungefilterter Variantensatz f\"uhrt hier also zu Scheintreffern; ein Hard Filter oder VQSR sowie BQSR w\"aren in einer produktiven Pipeline erforderlich.
+Die beiden Genome sind technisch vergleichbar (Tab.~\ref{tab:qc}, \ref{tab:var}); Mapping-Rate, Duplikationsrate, Ti/Tv und Het/Hom-Verh\"altnis liegen im erwarteten Bereich. Das wichtigste inhaltliche Ergebnis ist, dass der strenge ClinVar-Filter ohne Qualit\"atspr\"ufung ein falsches Bild gezeichnet h\"atte: Von je 11 Treffern blieben nach Pr\"ufung nur 7 bzw.\ 6, und nur 3 bzw.\ 4 sind belastbar. Mehrere der verworfenen Treffer liegen in Regionen, die f\"ur Mapping-Probleme bekannt sind (Paraloge, Pseudogene, GC-reiche oder subtelomerische Bereiche). Ein ungefilterter Variantensatz f\"uhrt hier also zu Scheintreffern; ein Hard Filter oder VQSR sowie BQSR w\"aren in einer produktiven Pipeline erforderlich. Die hohe \"Ubereinstimmung mit den Referenzcalls gilt nur innerhalb der Konfidenzregionen; schwierige Regionen, aus denen Mapping-Artefakte typischerweise stammen, sind darin nicht enthalten.
 
 Die Allelbalance ist ein pragmatisches, aber grobes Kriterium. Sie ist bei Indels verzerrt, weshalb diese bei niedriger AB nur als unsicher und nicht als Artefakt gelten. Die Einstufung \emph{unsicher} hei\ss t deshalb nicht, dass die Variante falsch ist, sondern dass die Daten sie nicht ausreichend belegen.
 
 \section{Einschr\"ankungen}
 \begin{itemize}
-\item \textbf{Keine Validierung gegen ein Truth Set.} Sensitivit\"at und Pr\"azision der Variantenbestimmung wurden nicht quantifiziert. Ein Vergleich mit den Platinum-Genomes- bzw.\ GIAB-Referenzcalls \citep{eberle2017,zook2014} ist geplant.
+\item \textbf{Eingeschr\"ankte Validierung.} Der Abgleich mit den Platinum-Genomes-Referenzcalls gilt nur f\"ur die Konfidenzregionen (Chromosomen 1--22 und X), nicht f\"ur schwierige Regionen, das Y-Chromosom und das Mitochondrium. Das Truth Set beruht auf Sequenzdaten desselben Pedigrees \citep{eberle2017} und ist daher nicht vollst\"andig unabh\"angig; die Werte k\"onnen die tats\"achliche Genauigkeit \"ubersch\"atzen. Ein Vergleich mit einem unabh\"angigen Truth Set (GIAB, \citealp{zook2014}) steht noch aus.
 \item Kein Variantenfilter (VQSR/Hard Filter), kein BQSR; die Schwellen des Kandidatenfilters sind nicht kalibriert.
 \item \gene{SERPINA1} wurde in den Roh-Alignments nicht best\"atigt; die Hinweise auf systematische Artefakte (\gene{PRSS1}, \gene{CNN2}, \gene{SERPINA1} in beiden Proben) sind nicht durch Populationsfrequenzen abgesichert.
 \item Etwa 0,6~\% der gerufenen Varianten tauchen in der VEP-Ausgabe nicht auf; die Ursache ist nicht vollst\"andig gekl\"art.
@@ -293,10 +320,10 @@ Die Allelbalance ist ein pragmatisches, aber grobes Kriterium. Sie ist bei Indel
 \end{itemize}
 
 \section{Ausblick}
-Als n\"achste Schritte sind eine Validierung gegen das Truth Set (z.\,B.\ mit rtg vcfeval oder hap.py, mit angepassten Chromosomennamen), ein Variantenfilter nach GATK-Empfehlung, die Pr\"ufung der unsicheren Treffer in IGV und der Abgleich mit Populationsfrequenzen vorgesehen.
+Als n\"achste Schritte sind ein Abgleich mit einem unabh\"angigen Truth Set (GIAB), ein Variantenfilter nach GATK-Empfehlung, die Pr\"ufung der unsicheren Treffer in IGV und der Abgleich mit Populationsfrequenzen vorgesehen.
 
 \section{Schlussfolgerung}
-Die Pipeline verarbeitet zwei Gesamtgenome reproduzierbar von den Rohdaten bis zu annotierten Kandidaten. Die Qualit\"atspr\"ufung zeigt, dass ein strenger ClinVar-Filter allein nicht ausreicht: Erst die Kombination mit Allelbalance, Tiefe und Genotypqualit\"at trennt belastbare Treffer von Mapping-Artefakten. Im Elternvergleich ergab sich kein Gen mit belastbaren Varianten bei beiden Eltern. Alle Aussagen sind ClinVar-Annotationen ohne Diagnosewert.
+Die Pipeline verarbeitet zwei Gesamtgenome reproduzierbar von den Rohdaten bis zu annotierten Kandidaten; die ungefilterten Calls stimmen innerhalb der Konfidenzregionen zu rund 99~\% mit den Platinum-Genomes-Referenzcalls \"uberein. Die Qualit\"atspr\"ufung zeigt, dass ein strenger ClinVar-Filter allein nicht ausreicht: Erst die Kombination mit Allelbalance, Tiefe und Genotypqualit\"at trennt belastbare Treffer von Mapping-Artefakten. Im Elternvergleich ergab sich kein Gen mit belastbaren Varianten bei beiden Eltern. Alle Aussagen sind ClinVar-Annotationen ohne Diagnosewert.
 
 \section*{Datenverf\"ugbarkeit}
 Die Rohdaten sind \"offentlich verf\"ugbar (ENA: ERR194147, ERR194146). Code und Konfiguration der Pipeline stehen im Projektverzeichnis bzw.\ im zugeh\"origen GitHub-Repository.

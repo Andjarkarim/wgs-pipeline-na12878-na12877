@@ -1,0 +1,21 @@
+Spalten: Schwelle, TP (Truth Set), FP, TP (Calls), FN, Praezision, Sensitivitaet, F-Mass
+
+== NA12878 ==
+Threshold  True-pos-baseline  True-pos-call  False-pos  False-neg  Precision  Sensitivity  F-measure
+----------------------------------------------------------------------------------------------------
+   42.650            4124417        4124255      39397      43483     0.9905       0.9896     0.9901
+     None            4125904        4125743      41486      41996     0.9900       0.9899     0.9900
+-- SNVs (letzte Zeile von snp_roc) --
+30.390	3571506.00	25874.00	3571175.00	23666.00	0.9928	0.9934	0.9931
+-- Indels u.a. (letzte Zeile von non_snp_roc) --
+30.010	554398.00	15612.00	554568.00	18330.00	0.9726	0.9680	0.9703
+
+== NA12877 ==
+Threshold  True-pos-baseline  True-pos-call  False-pos  False-neg  Precision  Sensitivity  F-measure
+----------------------------------------------------------------------------------------------------
+   43.320            4106816        4106611      38858      40837     0.9906       0.9902     0.9904
+     None            4108240        4108035      40723      39413     0.9902       0.9905     0.9903
+-- SNVs (letzte Zeile von snp_roc) --
+30.390	3553886.00	25683.00	3553518.00	23650.00	0.9928	0.9934	0.9931
+-- Indels u.a. (letzte Zeile von non_snp_roc) --
+30.440	554354.00	15040.00	554517.00	15763.00	0.9736	0.9724	0.9730

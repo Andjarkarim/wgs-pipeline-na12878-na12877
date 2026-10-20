@@ -1,0 +1,7 @@
+name: validierung
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - rtg-tools=3.13
+  - bcftools=1.24
