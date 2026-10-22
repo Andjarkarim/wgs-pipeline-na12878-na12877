@@ -79,7 +79,7 @@ Aufruf: `conda env create -f environment_validierung.yml`, `conda activate valid
 - Eingeschränkte Validierung: Der Abgleich mit den Platinum-Genomes-Referenzcalls gilt nur für die Konfidenzregionen (Chromosomen 1–22 und X). Das Truth Set beruht auf Sequenzdaten desselben Pedigrees und ist nicht vollständig unabhängig; ein Vergleich mit einem unabhängigen Truth Set (GIAB) steht noch aus.
 - Das VCF ist ungefiltert (kein VQSR, kein Hard Filter, kein BQSR). Die Qualitätsklassen gelten nur für die ClinVar-Kandidaten, ihre Schwellen sind nicht kalibriert.
 - Treffer in Regionen mit Paralogen, Pseudogenen oder hohem GC-Gehalt (zum Beispiel PRSS1, CNN2, PI4KA) sind anfällig für Mapping-Artefakte.
-- Etwa 0,6 % der gerufenen Varianten fehlen in der VEP-Ausgabe; die Ursache ist nicht vollständig geklärt.
+- Etwa 0,6 % der gerufenen Varianten fehlen in der VEP-Ausgabe (Mutter 28.666, Vater 25.588). Sie liegen alle auf Contigs außerhalb der Chromosomen 1–22, X und Y; auf diesen Chromosomen wurden alle Varianten annotiert. Den Grund dafür und ob darunter ClinVar-Einträge liegen, habe ich nicht untersucht.
 - ClinVar ändert sich laufend (hier Stand 2026-10-04). Krankheitsnamen und Prüfsterne sind wörtlich übernommen.
 
 ## Daten
@@ -88,7 +88,7 @@ Rohdaten: European Nucleotide Archive, ERR194147 und ERR194146. Sie liegen nicht
 
 ## Autor
 
-Karim Andjar, Master Bioinformatik und Systembiologie, Justus-Liebig-Universität Gießen.
+Karim Andjar, Master Bioinformatik und Systembiologie, Justus-Liebig-Universität Gießen. Eigenes Lernprojekt, nicht Teil einer Lehrveranstaltung.
 
 ## Entstehung
 
